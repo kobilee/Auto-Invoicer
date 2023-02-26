@@ -1,6 +1,7 @@
 ## Auto-Invoicer
 
 This project is a tool that helps automate the invoicing process. It allows the user to send invoices to clients via email and backup the invoices once sent.
+This tool does not convert xps to pdf, to do this use https://xpstopdf.com/ and move the downloaded pdf's to the input directory
 
 # Installation
 
