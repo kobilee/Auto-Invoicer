@@ -1,6 +1,3 @@
-import numpy as np
-import math
-import pandas as pd
 import PyPDF2
 import fitz
 import os
@@ -9,12 +6,17 @@ import dbf
 import shutil
 import datetime
 
+EMAIL = "email"
 class Invoice:
-    def __init__(self, file_path):
+
+
+    def __init__(self, file_path, config):
         self.file_path = file_path
         self.invoice_list = []
         self.client_data = []
         self.final_list = []
+        self.config = config
+
         
     def read_dbf_to_dict(self):
         table = dbf.Table(self.file_path)
@@ -27,14 +29,14 @@ class Invoice:
             # Loop through all the pages
             for page in pdf_file:
                 # Search for the text "invoice #"
-                invoice_pos = page.search_for('Invoice #')[0]
+                invoice_pos = page.search_for(self.config['pdf_invoice'])[0]
 
                 # Extract the invoice number from the cell to the right
                 invoice_num_rect = fitz.Rect(invoice_pos.x1, invoice_pos.y0-10, invoice_pos.x1+150, invoice_pos.y1+10) # Assumes cell is 150 units wide
                 invoice_num = page.get_text("text", clip=invoice_num_rect).strip()
                 
                 # Search for the text "Customer #"
-                customer_pos = page.search_for('Customer #')[0]
+                customer_pos = page.search_for(self.config['pdf_customer'])[0]
 
                 # Extract the customer number from the cell to the right
                 customer_num_rect = fitz.Rect(customer_pos.x1, customer_pos.y0-10, customer_pos.x1+150, customer_pos.y1+10) # Assumes cell is 150 units wide
@@ -42,22 +44,22 @@ class Invoice:
 
                 # Create a dictionary mapping "invoice #" to <a invoice number> and "Customer #" to <a customer number>
                 data = {
-                    "invoice #": invoice_num,
-                    "Customer #": customer_num
+                    self.config['pdf_invoice']: invoice_num,
+                    self.config['pdf_customer']: customer_num
                 }
                 
                 self.invoice_list.append(data)
 
     def find_client(self):
-        self.client_data[0]['CCUSTNO'] = self.invoice_list[0]["Customer #"]
+        self.client_data[0][self.config['dbf_customer']] = self.invoice_list[0]["Customer #"]
 
-        client_data_hash = {entry['CCUSTNO']: entry for entry in self.client_data}
+        client_data_hash = {entry[self.config['dbf_customer']]: entry for entry in self.client_data}
 
         for entry in self.invoice_list:
-            ccustno = entry['Customer #']
+            ccustno = entry[self.config['pdf_customer']]
             if ccustno in client_data_hash:
-                match = {'Customer #': ccustno, 'email': "kobiatlaslee@mail.com", 'invoice #': entry['invoice #']}
-                # match = {'Customer #': ccustno, 'email': client_data_hash[ccustno]['CEMAIL'], 'invoice #': entry['invoice #']}
+                match = {self.config['pdf_customer']: ccustno, EMAIL: "kobiatlaslee@mail.com", self.config['pdf_invoice']: entry[self.config['pdf_invoice']]}
+                # match = {self.config['pdf_customer']: ccustno, EMAIL: client_data_hash[ccustno][self.config['dbf_email']], self.config['pdf_invoice']: entry[self.config['pdf_invoice']]}
                 self.final_list.append(match)
 
         # print the result
@@ -78,13 +80,13 @@ class Invoice:
 
     def check_and_send_invoices(self, dicts_list, directory_path):
         for dictionary in dicts_list:
-            invoice_number = dictionary.get('invoice #')
+            invoice_number = dictionary.get(self.config['pdf_invoice'])
             invoice_path = os.path.join(directory_path, f'{invoice_number}.pdf')
             if os.path.exists(invoice_path):
-                email_address = dictionary.get('email')
+                email_address = dictionary.get(EMAIL)
                 self.send_email_with_attachment(email_address, invoice_path)   
             else:
-                print(f"File {invoice_path} not found for invoice {dictionary['invoice #']}. Email not sent.")
+                print(f"File {invoice_path} not found for invoice {dictionary[self.config['pdf_invoice']]}. Email not sent.")
        
     def copy_directory_with_timestamp(self, source_dir, dest_dir):
         """

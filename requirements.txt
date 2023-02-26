@@ -1,0 +1,5 @@
+aenum==3.1.11
+dbf==0.99.3
+PyMuPDF==1.21.1
+PyPDF2==3.0.1
+pywin32==305
