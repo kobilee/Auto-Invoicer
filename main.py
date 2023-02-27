@@ -32,7 +32,6 @@ def main():
     for filename in os.listdir(input_folder):
         if filename.endswith(".pdf"):
             # Do something with the file
-            print(filename)
             file = os.path.join(input_folder, filename)
             invoice.pdf(file)
             found_pdf = True
