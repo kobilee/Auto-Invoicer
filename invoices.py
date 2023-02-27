@@ -8,6 +8,16 @@ import datetime
 
 EMAIL = "email"
 class Invoice:
+    """
+    Class for reading invoices and sending them to clients via email.
+
+    Attributes:
+        file_path (str): The file path for the database file.
+        invoice_list (list): A list to store the invoice data.
+        client_data (list): A list to store the client data.
+        final_list (list): A list to store the final invoice and client data.
+        config (dict): A dictionary that stores the configuration data.
+    """
 
 
     def __init__(self, file_path, config):
@@ -19,12 +29,21 @@ class Invoice:
 
         
     def read_dbf_to_dict(self):
+        """
+        Reads the database file and stores the client data in a list of dictionaries.
+        """
         table = dbf.Table(self.file_path)
         table.open()
         self.client_data = [dict((k, v.strip()) if isinstance(v, str) else (k, v) for k, v in zip(table.field_names, row)) for row in table]
         table.close()
 
     def pdf(self, file):
+        """
+        Reads a PDF file and extracts invoice and customer data.
+
+        Args:
+            file (str): The file path for the PDF file.
+        """
         with fitz.open(file) as pdf_file:
             # Loop through all the pages
             for page in pdf_file:
@@ -51,6 +70,9 @@ class Invoice:
                 self.invoice_list.append(data)
 
     def find_client(self):
+        """
+        Matches customer numbers from the invoice data to the client data and stores the final data in a list.
+        """
         self.client_data[0][self.config['dbf_customer']] = self.invoice_list[0]["Customer #"]
 
         client_data_hash = {entry[self.config['dbf_customer']]: entry for entry in self.client_data}
@@ -66,6 +88,13 @@ class Invoice:
         print(self.final_list)
 
     def send_email_with_attachment(self, email_address, attachment_path):
+        """
+        Sends an email with an attached invoice PDF.
+
+        Args:
+            email_address (str): The email address of the client.
+            attachment_path (str): The file path for the invoice PDF.
+        """
         try:
             outlook = win32.Dispatch('outlook.application')
             mail = outlook.CreateItem(0)
@@ -79,6 +108,13 @@ class Invoice:
             print(f"Email to {email_address} fail to send, pleae send invoice {attachment_path} maunually")
 
     def check_and_send_invoices(self, dicts_list, directory_path):
+        """
+        Checks if the invoice PDF exists and sends an email with the PDF attached if it does.
+
+        Args:
+            dicts_list (list): A list of dictionaries containing invoice and client data.
+            directory_path (str): The directory path where the invoice PDFs are stored.
+        """
         for dictionary in dicts_list:
             invoice_number = dictionary.get(self.config['pdf_invoice'])
             invoice_path = os.path.join(directory_path, f'{invoice_number}.pdf')
@@ -131,12 +167,10 @@ class Invoice:
         source_dir (str): The path of the directory to be copied.
         dest_dir (str): The path of the directory where the copied directory with timestamp will be created.
 
-        Returns:
-        str: The name of the new directory created with timestamp.
         """
         new_dir = self.copy_directory_with_timestamp(source_dir, dest_dir)
         self.clear_directory(source_dir)
-        print(new_dir)
+        print(f'The input directory has been clear and todays invoices have been backup into: {new_dir}')
 
 
 
