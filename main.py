@@ -19,12 +19,12 @@ path_config = {
 email_config = {
     'pdf_invoice': setting.PDF_INVOICE_STR,
     'pdf_customer': setting.PDF_CUSTOMER_STR,
-    'dbf_customer': setting.DBF_EMAIL_STR,
-    'dbf_email': setting.DBF_CUSTOMER_STR
+    'dbf_customer': setting.DBF_CUSTOMER_STR,
+    'dbf_email': setting.DBF_EMAIL_STR
 }
 def main():
     invoice = Invoice(path_config['dbf'], email_config)
-    invoice.read_dbf_to_dict()
+    invoice.read_excel_to_dict()
     input_folder = path_config["input"]
     backup_folder = path_config["backup"]
 

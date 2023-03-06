@@ -2,7 +2,7 @@ import PyPDF2
 import fitz
 import os
 import win32com.client as win32
-import dbf
+import pandas as pd
 import shutil
 import datetime
 
@@ -28,14 +28,13 @@ class Invoice:
         self.config = config
 
         
-    def read_dbf_to_dict(self):
+    def read_excel_to_dict(self):
         """
-        Reads the database file and stores the client data in a list of dictionaries.
+        Reads the excel file and stores the client data in a list of dictionaries.
+
         """
-        table = dbf.Table(self.file_path)
-        table.open()
-        self.client_data = [dict((k, v.strip()) if isinstance(v, str) else (k, v) for k, v in zip(table.field_names, row)) for row in table]
-        table.close()
+        df = pd.read_excel(self.file_path)
+        self.client_data = df.to_dict('records')
 
     def pdf(self, file):
         """
@@ -44,16 +43,17 @@ class Invoice:
         Args:
             file (str): The file path for the PDF file.
         """
+
         with fitz.open(file) as pdf_file:
             # Loop through all the pages
-            for page in pdf_file:
+            for page_num, page in enumerate(pdf_file):
                 # Search for the text "invoice #"
                 invoice_pos = page.search_for(self.config['pdf_invoice'])[0]
 
                 # Extract the invoice number from the cell to the right
                 invoice_num_rect = fitz.Rect(invoice_pos.x1, invoice_pos.y0-10, invoice_pos.x1+150, invoice_pos.y1+10) # Assumes cell is 150 units wide
                 invoice_num = page.get_text("text", clip=invoice_num_rect).strip()
-                
+
                 # Search for the text "Customer #"
                 customer_pos = page.search_for(self.config['pdf_customer'])[0]
 
@@ -66,17 +66,30 @@ class Invoice:
                     self.config['pdf_invoice']: invoice_num,
                     self.config['pdf_customer']: customer_num
                 }
-                
+
+                # Append the dictionary to the invoice list
                 self.invoice_list.append(data)
+
+                # Save the current page as a PDF file with the invoice number as the file name
+                filename = invoice_num + '.pdf'
+                file_path = os.path.join(os.path.dirname(file), filename)
+                # Create a new PDF document containing only the current page
+                new_pdf = fitz.open()
+                new_pdf.insert_pdf(pdf_file, from_page=page_num, to_page=page_num)
+
+                new_pdf.save(file_path)
+
+                # Close the new PDF document
+                new_pdf.close()
 
     def find_client(self):
         """
         Matches customer numbers from the invoice data to the client data and stores the final data in a list.
         """
-        self.client_data[0][self.config['dbf_customer']] = self.invoice_list[0]["Customer #"]
+        # REMOVE THIS FOR WORKING VERSION
+        # self.client_data[0][self.config['dbf_customer']] = self.invoice_list[0]["Customer #"]
 
         client_data_hash = {entry[self.config['dbf_customer']]: entry for entry in self.client_data}
-
         for entry in self.invoice_list:
             ccustno = entry[self.config['pdf_customer']]
             if ccustno in client_data_hash:
