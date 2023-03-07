@@ -20,12 +20,13 @@ class Invoice:
     """
 
 
-    def __init__(self, file_path, config):
+    def __init__(self, file_path, config, options):
         self.file_path = file_path
         self.invoice_list = []
         self.client_data = []
         self.final_list = []
-        self.config = config
+        self.variable_config = config
+        self.options_config = options
 
         
     def read_excel_to_dict(self):
@@ -35,6 +36,10 @@ class Invoice:
         """
         df = pd.read_excel(self.file_path)
         self.client_data = df.to_dict('records')
+        
+        for item in self.client_data:
+            if "," in item[self.variable_config['dbf_email']]:
+                item[self.variable_config['dbf_email']] = [x.strip() for x in item[self.variable_config['dbf_email']].split(",")]
 
     def pdf(self, file):
         """
@@ -48,14 +53,14 @@ class Invoice:
             # Loop through all the pages
             for page_num, page in enumerate(pdf_file):
                 # Search for the text "invoice #"
-                invoice_pos = page.search_for(self.config['pdf_invoice'])[0]
+                invoice_pos = page.search_for(self.variable_config['pdf_invoice'])[0]
 
                 # Extract the invoice number from the cell to the right
                 invoice_num_rect = fitz.Rect(invoice_pos.x1, invoice_pos.y0-10, invoice_pos.x1+150, invoice_pos.y1+10) # Assumes cell is 150 units wide
                 invoice_num = page.get_text("text", clip=invoice_num_rect).strip()
 
                 # Search for the text "Customer #"
-                customer_pos = page.search_for(self.config['pdf_customer'])[0]
+                customer_pos = page.search_for(self.variable_config['pdf_customer'])[0]
 
                 # Extract the customer number from the cell to the right
                 customer_num_rect = fitz.Rect(customer_pos.x1, customer_pos.y0-10, customer_pos.x1+150, customer_pos.y1+10) # Assumes cell is 150 units wide
@@ -63,8 +68,8 @@ class Invoice:
 
                 # Create a dictionary mapping "invoice #" to <a invoice number> and "Customer #" to <a customer number>
                 data = {
-                    self.config['pdf_invoice']: invoice_num,
-                    self.config['pdf_customer']: customer_num
+                    self.variable_config['pdf_invoice']: invoice_num,
+                    self.variable_config['pdf_customer']: customer_num
                 }
 
                 # Append the dictionary to the invoice list
@@ -86,15 +91,12 @@ class Invoice:
         """
         Matches customer numbers from the invoice data to the client data and stores the final data in a list.
         """
-        # REMOVE THIS FOR WORKING VERSION
-        # self.client_data[0][self.config['dbf_customer']] = self.invoice_list[0]["Customer #"]
 
-        client_data_hash = {entry[self.config['dbf_customer']]: entry for entry in self.client_data}
+        client_data_hash = {entry[self.variable_config['dbf_customer']]: entry for entry in self.client_data}
         for entry in self.invoice_list:
-            ccustno = entry[self.config['pdf_customer']]
+            ccustno = entry[self.variable_config['pdf_customer']]
             if ccustno in client_data_hash:
-                match = {self.config['pdf_customer']: ccustno, EMAIL: "kobiatlaslee@mail.com", self.config['pdf_invoice']: entry[self.config['pdf_invoice']]}
-                # match = {self.config['pdf_customer']: ccustno, EMAIL: client_data_hash[ccustno][self.config['dbf_email']], self.config['pdf_invoice']: entry[self.config['pdf_invoice']]}
+                match = {self.variable_config['pdf_customer']: ccustno, EMAIL: client_data_hash[ccustno][self.variable_config['dbf_email']], self.variable_config['pdf_invoice']: entry[self.variable_config['pdf_invoice']]}
                 self.final_list.append(match)
 
         # print the result
@@ -112,6 +114,8 @@ class Invoice:
             outlook = win32.Dispatch('outlook.application')
             mail = outlook.CreateItem(0)
             mail.To = email_address
+            if self.options_config['cc']:
+                mail.CC = self.options_config['cc']
             mail.Subject = 'Invoice Attachment'
             mail.Body = 'Please find attached the invoice you requested.'
             mail.Attachments.Add(attachment_path)
@@ -129,13 +133,18 @@ class Invoice:
             directory_path (str): The directory path where the invoice PDFs are stored.
         """
         for dictionary in dicts_list:
-            invoice_number = dictionary.get(self.config['pdf_invoice'])
+            invoice_number = dictionary.get(self.variable_config['pdf_invoice'])
             invoice_path = os.path.join(directory_path, f'{invoice_number}.pdf')
             if os.path.exists(invoice_path):
                 email_address = dictionary.get(EMAIL)
-                self.send_email_with_attachment(email_address, invoice_path)   
+                if isinstance(email_address, str):
+                    self.send_email_with_attachment(email_address, invoice_path) 
+                elif isinstance(email_address, list):
+                    for email in email_address:
+                        self.send_email_with_attachment(email, invoice_path)
+ 
             else:
-                print(f"File {invoice_path} not found for invoice {dictionary[self.config['pdf_invoice']]}. Email not sent.")
+                print(f"File {invoice_path} not found for invoice {dictionary[self.variable_config['pdf_invoice']]}. Email not sent.")
        
     def copy_directory_with_timestamp(self, source_dir, dest_dir):
         """
