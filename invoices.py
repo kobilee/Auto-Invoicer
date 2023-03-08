@@ -151,14 +151,16 @@ class Invoice:
         """
         for dictionary in dicts_list:
             invoice_number = dictionary.get(self.variable_config['pdf_invoice'])
+            customer_number = dictionary.get(self.variable_config['pdf_customer'])
+
             invoice_path = os.path.join(directory_path, f'{invoice_number}.pdf')
             if os.path.exists(invoice_path) and dictionary.get(INVOICE_TOTAL) != "0.00":
                 email_address = dictionary.get(EMAIL)
                 if isinstance(email_address, str):
-                    self.send_email_with_attachment(email_address, invoice_path) 
+                    self.send_email_with_attachment(email_address, invoice_path, invoice_number, customer_number) 
                 elif isinstance(email_address, list):
                     for email in email_address:
-                        self.send_email_with_attachment(email, invoice_path)
+                        self.send_email_with_attachment(email, invoice_path, invoice_number, customer_number)
  
             else:
                 print(f"File {invoice_path} not found for invoice {dictionary[self.variable_config['pdf_invoice']]}. Email not sent.")
