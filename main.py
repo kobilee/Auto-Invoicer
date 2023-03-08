@@ -9,7 +9,7 @@ import setting
 path_config = {
     'excel': setting.PATH_EXCEL,
     'input': setting.PATH_INPUT,
-    'backup': setting.PATH_BACKUP,
+    'backup': setting.PATH_BACKUP
 }
 
 # column data config
@@ -17,7 +17,8 @@ email_config = {
     'pdf_invoice': setting.PDF_INVOICE_STR,
     'pdf_customer': setting.PDF_CUSTOMER_STR,
     'excel_customer': setting.EXCEL_CUSTOMER_STR,
-    'excel_email': setting.EXCEL_EMAIL_STR
+    'excel_email': setting.EXCEL_EMAIL_STR,
+    'output': setting.PATH_OUTPUT
 }
 
 option_config = {    
@@ -44,7 +45,7 @@ def main():
     if found_pdf:
         invoice.find_client()
 
-        pause = input("Please review the invoices/emails in the termial. Press 'Y' to continue or any other key to exit: ")
+        pause = input(f"Please review the invoices/emails {email_config['output']} directory . Press 'Y' to continue or any other key to exit: ")
         if pause.upper() == "Y":
             if option_config['send_email']:
                 invoice.check_and_send_invoices(invoice.final_list, input_folder)

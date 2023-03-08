@@ -4,6 +4,7 @@
 PATH_EXCEL = "C:/Users/kalee/projects/Auto-Invoicer/database/emailfile.xlsx"
 PATH_INPUT = "C:/Users/kalee/projects/Auto-Invoicer/pdf"
 PATH_BACKUP = "C:/Users/kalee/projects/Auto-Invoicer/backup"
+PATH_OUTPUT = "C:/Users/kalee/projects/Auto-Invoicer/validate"
 
 # column data configuration
 PDF_INVOICE_STR = 'Invoice #'

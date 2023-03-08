@@ -26,6 +26,7 @@ class Invoice:
         self.invoice_list = []
         self.client_data = []
         self.final_list = []
+        self.not_sent = []
         self.variable_config = config
         self.options_config = options
 
@@ -104,12 +105,18 @@ class Invoice:
         client_data_hash = {entry[self.variable_config['excel_customer']]: entry for entry in self.client_data}
         for entry in self.invoice_list:
             ccustno = entry[self.variable_config['pdf_customer']]
-            if ccustno in client_data_hash:
-                match = {self.variable_config['pdf_customer']: ccustno, EMAIL: client_data_hash[ccustno][self.variable_config['excel_email']], self.variable_config['pdf_invoice']: entry[self.variable_config['pdf_invoice']], INVOICE_TOTAL: entry[INVOICE_TOTAL]}
+            if ccustno in client_data_hash and entry[INVOICE_TOTAL] != "0.00":
+                match = {self.variable_config['pdf_customer']: ccustno, EMAIL: client_data_hash[ccustno][self.variable_config['excel_email']], self.variable_config['pdf_invoice']: entry[self.variable_config['pdf_invoice']]}
                 self.final_list.append(match)
+            else:
+                unmatch = {self.variable_config['pdf_customer']: ccustno, EMAIL: client_data_hash[ccustno][self.variable_config['excel_email']], self.variable_config['pdf_invoice']: entry[self.variable_config['pdf_invoice']], INVOICE_TOTAL: entry[INVOICE_TOTAL]}
+                self.not_sent.append(unmatch)
 
         # print the result
-        print(self.final_list)
+        final_df = pd.DataFRame.from_records(self.final_list)
+        final_df.to_csv(self.variable_config['output'] + '/To_be_Sent.csv')
+        not_sent_df = pd.DataFRame.from_records(self.not_sent)
+        not_sent_df.to_csv(self.variable_config['output'] + '/Unsent.csv')
 
     def send_email_with_attachment(self, email_address, attachment_path, invoice_num, client_num):
         """
@@ -126,14 +133,15 @@ class Invoice:
             if self.options_config['cc']:
                 mail.CC = self.options_config['cc']
             mail.Subject = f'PortaMini Invoice {invoice_num} {client_num}'
-            mail.Body = '''Please see attached invoice.\n
-                            \n
-                            Regards,\n
-                            \n
-                            Rob Lee\n
-                            PortaMini Storage\n
-                            www.portamini.com\n
-                            Phone: 416-221-6660\n'''
+            mail.Body = '''/
+Please see attached invoice.
+Regards,
+
+Rob Lee
+PortaMini Storage
+www.portamini.com
+Phone: 416-221-6660
+'''
             
             mail.Attachments.Add(attachment_path)
             mail.Send()
@@ -154,7 +162,7 @@ class Invoice:
             customer_number = dictionary.get(self.variable_config['pdf_customer'])
 
             invoice_path = os.path.join(directory_path, f'{invoice_number}.pdf')
-            if os.path.exists(invoice_path) and dictionary.get(INVOICE_TOTAL) != "0.00":
+            if os.path.exists(invoice_path):
                 email_address = dictionary.get(EMAIL)
                 if isinstance(email_address, str):
                     self.send_email_with_attachment(email_address, invoice_path, invoice_number, customer_number) 
