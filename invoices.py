@@ -7,6 +7,7 @@ import shutil
 import datetime
 
 EMAIL = "email"
+INVOICE_TOTAL = "Invoice Total"
 class Invoice:
     """
     Class for reading invoices and sending them to clients via email.
@@ -38,8 +39,8 @@ class Invoice:
         self.client_data = df.to_dict('records')
         
         for item in self.client_data:
-            if "," in item[self.variable_config['dbf_email']]:
-                item[self.variable_config['dbf_email']] = [x.strip() for x in item[self.variable_config['dbf_email']].split(",")]
+            if "," in item[self.variable_config['excel_email']]:
+                item[self.variable_config['excel_email']] = [x.strip() for x in item[self.variable_config['excel_email']].split(",")]
 
     def pdf(self, file):
         """
@@ -66,10 +67,18 @@ class Invoice:
                 customer_num_rect = fitz.Rect(customer_pos.x1, customer_pos.y0-10, customer_pos.x1+150, customer_pos.y1+10) # Assumes cell is 150 units wide
                 customer_num = page.get_text("text", clip=customer_num_rect).strip()
 
+                # Search for the text "Customer #"
+                invoice_total_pos = page.search_for(INVOICE_TOTAL)[0]
+
+                # Extract the customer number from the cell to the right
+                invoice_total_rect = fitz.Rect(invoice_total_pos.x1, invoice_total_pos.y0-10, invoice_total_pos.x1+150, invoice_total_pos.y1+10) # Assumes cell is 150 units wide
+                invoice_total = page.get_text("text", clip=invoice_total_rect).strip()
+
                 # Create a dictionary mapping "invoice #" to <a invoice number> and "Customer #" to <a customer number>
                 data = {
                     self.variable_config['pdf_invoice']: invoice_num,
-                    self.variable_config['pdf_customer']: customer_num
+                    self.variable_config['pdf_customer']: customer_num,
+                    INVOICE_TOTAL: invoice_total
                 }
 
                 # Append the dictionary to the invoice list
@@ -92,17 +101,17 @@ class Invoice:
         Matches customer numbers from the invoice data to the client data and stores the final data in a list.
         """
 
-        client_data_hash = {entry[self.variable_config['dbf_customer']]: entry for entry in self.client_data}
+        client_data_hash = {entry[self.variable_config['excel_customer']]: entry for entry in self.client_data}
         for entry in self.invoice_list:
             ccustno = entry[self.variable_config['pdf_customer']]
             if ccustno in client_data_hash:
-                match = {self.variable_config['pdf_customer']: ccustno, EMAIL: client_data_hash[ccustno][self.variable_config['dbf_email']], self.variable_config['pdf_invoice']: entry[self.variable_config['pdf_invoice']]}
+                match = {self.variable_config['pdf_customer']: ccustno, EMAIL: client_data_hash[ccustno][self.variable_config['excel_email']], self.variable_config['pdf_invoice']: entry[self.variable_config['pdf_invoice']], INVOICE_TOTAL: entry[INVOICE_TOTAL]}
                 self.final_list.append(match)
 
         # print the result
         print(self.final_list)
 
-    def send_email_with_attachment(self, email_address, attachment_path):
+    def send_email_with_attachment(self, email_address, attachment_path, invoice_num, client_num):
         """
         Sends an email with an attached invoice PDF.
 
@@ -116,8 +125,16 @@ class Invoice:
             mail.To = email_address
             if self.options_config['cc']:
                 mail.CC = self.options_config['cc']
-            mail.Subject = 'Invoice Attachment'
-            mail.Body = 'Please find attached the invoice you requested.'
+            mail.Subject = f'PortaMini Invoice {invoice_num} {client_num}'
+            mail.Body = '''Please see attached invoice.\n
+                            \n
+                            Regards,\n
+                            \n
+                            Rob Lee\n
+                            PortaMini Storage\n
+                            www.portamini.com\n
+                            Phone: 416-221-6660\n'''
+            
             mail.Attachments.Add(attachment_path)
             mail.Send()
             print(f"Email sent to {email_address} with invoice {attachment_path}.")
@@ -135,7 +152,7 @@ class Invoice:
         for dictionary in dicts_list:
             invoice_number = dictionary.get(self.variable_config['pdf_invoice'])
             invoice_path = os.path.join(directory_path, f'{invoice_number}.pdf')
-            if os.path.exists(invoice_path):
+            if os.path.exists(invoice_path) and dictionary.get(INVOICE_TOTAL) != "0.00":
                 email_address = dictionary.get(EMAIL)
                 if isinstance(email_address, str):
                     self.send_email_with_attachment(email_address, invoice_path) 
