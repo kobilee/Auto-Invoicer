@@ -43,7 +43,7 @@ def main():
             continue
     
     if found_pdf:
-        invoice.find_client()
+        invoice.find_client() #Test
 
         pause = input(f"Please review the invoices/emails {email_config['output']} directory . Press 'Y' to continue or any other key to exit: ")
         if pause.upper() == "Y":
