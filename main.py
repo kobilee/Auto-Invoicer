@@ -1,61 +1,60 @@
-import PyPDF2
-import fitz
 import os
-import win32com.client
-from invoices import Invoice
-import setting
+import argparse
+import json
+import tempfile
+from src.backend.invoices import InvoiceProcessor
+from src.backend.statements import StatementProcessor
 
-# path config
-path_config = {
-    'excel': setting.PATH_EXCEL,
-    'input': setting.PATH_INPUT,
-    'backup': setting.PATH_BACKUP,
-}
+def load_settings(json_path):
+    if not os.path.isfile(json_path):
+        raise FileNotFoundError(f"The configuration file '{json_path}' was not found.")
+    
+    with open(json_path, 'r') as file:
+        return json.load(file)
 
-# column data config
-email_config = {
-    'pdf_invoice': setting.PDF_INVOICE_STR,
-    'pdf_customer': setting.PDF_CUSTOMER_STR,
-    'excel_customer': setting.EXCEL_CUSTOMER_STR,
-    'excel_email': setting.EXCEL_EMAIL_STR
-}
-
-option_config = {    
-    'send_email': setting.SEND_EMAIL,
-    'backup_pdf': setting.BACKUP_PDF,
-    'cc': setting.CC
-}
-def main():
-    invoice = Invoice(path_config['excel'], email_config, option_config)
-    invoice.read_excel_to_dict()
-    input_folder = path_config["input"]
-    backup_folder = path_config["backup"]
+def process_documents(processor, config, args):
+    processor.read_excel_to_dict()
+    input_folder = config["input"]
+    backup_folder = config["backup"]
+    temp_dir = tempfile.mkdtemp()
 
     found_pdf = False
     for filename in os.listdir(input_folder):
         if filename.endswith(".pdf"):
-            # Do something with the file
             file = os.path.join(input_folder, filename)
-            invoice.pdf(file)
+            processor.pdf(file, temp_dir)
             found_pdf = True
         else:
             continue
-    
+
+
     if found_pdf:
-        invoice.find_client()
+        processor.find_client()
 
-        pause = input("Please review the invoices/emails in the termial. Press 'Y' to continue or any other key to exit: ")
+        pause = input("Please review the documents/emails in the terminal. Press 'Y' to continue or any other key to exit: ")
         if pause.upper() == "Y":
-            if option_config['send_email']:
-                invoice.check_and_send_invoices(invoice.final_list, input_folder)
-            if option_config['backup_pdf']:
-                invoice.copy_and_clear_directory(input_folder, backup_folder)
+            if config['send_email']:
+                processor.check_and_send_documents(processor.final_list, temp_dir)
+            if config['backup_pdf']:
+                processor.copy_and_clear_directory(temp_dir, backup_folder, args.document_type)
     else:
-        print(f"No pdf's found in the input directory: {path_config['input']} ")
+        print(f"No PDFs found in the input directory: {config['input']} ")
+    print("Complete")
 
-    
+def main():
+    parser = argparse.ArgumentParser(description='Process invoices or statements.')
+    parser.add_argument('document_type', choices=['invoice', 'statement'], help='Type of document to process')
+    parser.add_argument('--config', default='src/config/setting.json', help='Path to the configuration JSON file')
+    args = parser.parse_args()
+
+    config = load_settings(args.config)
+
+    if args.document_type == 'invoice':
+        processor = InvoiceProcessor(config)
+    elif args.document_type == 'statement':
+        processor = StatementProcessor(config)
+
+    process_documents(processor, config, args)
 
 if __name__ == '__main__':
     main()
-
-
