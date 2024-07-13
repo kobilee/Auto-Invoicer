@@ -1,0 +1,27 @@
+{
+    "file_path": "C:/Users/Jakobi Lee/Documents/Projects/Auto-Invoicer/pdf/pmsstatementssample.pdf",
+    "tool": "find_direction",
+    "searches": [
+      {
+        "string": "Stmt Date",
+        "direction": "below",
+        "page": 0
+      },
+      {
+        "string": "Customer No.",
+        "direction": "below",
+        "page": 0
+      },
+      {
+        "string": "Total",
+        "direction": "below",
+        "page": 0
+      },
+      {
+        "string": "Page",
+        "direction": "right",
+        "page": 0
+      }
+    ]
+  }
+  

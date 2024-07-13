@@ -1,13 +1,10 @@
-import PyPDF2
-import fitz
 import os
+import json
 import win32com.client as win32
 import pandas as pd
 import shutil
 import datetime
-
-EMAIL = "email"
-INVOICE_TOTAL = "Invoice Total"
+import src.backend.constants as c
 
 class DocumentProcessor:
     """
@@ -21,13 +18,12 @@ class DocumentProcessor:
         config (dict): A dictionary that stores the configuration data.
     """
 
-    def __init__(self, file_path, config, options):
-        self.file_path = file_path
+    def __init__(self, config):
+        self.file_path = config["excel"]
         self.data_list = []
         self.client_data = []
         self.final_list = []
-        self.variable_config = config
-        self.options_config = options
+        self.config = config
 
     def read_excel_to_dict(self):
         """
@@ -37,8 +33,8 @@ class DocumentProcessor:
         self.client_data = df.to_dict('records')
         
         for item in self.client_data:
-            if "," in item[self.variable_config['excel_email']]:
-                item[self.variable_config['excel_email']] = [x.strip() for x in item[self.variable_config['excel_email']].split(",")]
+            if "," in item[self.config['excel_email']]:
+                item[self.config['excel_email']] = [x.strip() for x in item[self.config['excel_email']].split(",")]
 
     def send_email_with_attachment(self, email_address, attachment_path, document_num, client_num):
         """
@@ -52,8 +48,8 @@ class DocumentProcessor:
             outlook = win32.Dispatch('outlook.application')
             mail = outlook.CreateItem(0)
             mail.To = email_address
-            if self.options_config['cc']:
-                mail.CC = self.options_config['cc']
+            if self.config['cc']:
+                mail.CC = self.config['cc']
             mail.Subject = f'PortaMini Document {document_num} {client_num}'
             mail.Body = '''Please see attached document.\n
                             \n
@@ -70,23 +66,6 @@ class DocumentProcessor:
         except Exception as e:
             print(f"Email to {email_address} failed to send. Please send document {attachment_path} manually. Error: {e}")
 
-    def find_client(self):
-        """
-        Matches customer numbers from the document data to the client data and stores the final data in a list.
-        """
-        client_data_hash = {entry[self.variable_config['excel_customer']]: entry for entry in self.client_data}
-        for entry in self.data_list:
-            ccustno = entry[self.variable_config['pdf_customer']]
-            if ccustno in client_data_hash:
-                match = {
-                    self.variable_config['pdf_customer']: ccustno,
-                    EMAIL: client_data_hash[ccustno][self.variable_config['excel_email']],
-                    self.variable_config['pdf_invoice']: entry[self.variable_config['pdf_invoice']],
-                    INVOICE_TOTAL: entry[INVOICE_TOTAL]
-                }
-                self.final_list.append(match)
-
-        print(self.final_list)
 
     def check_and_send_documents(self, dicts_list, directory_path):
         """
@@ -97,21 +76,27 @@ class DocumentProcessor:
             directory_path (str): The directory path where the document PDFs are stored.
         """
         for dictionary in dicts_list:
-            document_number = dictionary.get(self.variable_config['pdf_invoice'])
-            customer_number = dictionary.get(self.variable_config['pdf_customer'])
+            document_number = dictionary.get(c.FILE_KEY)
+            customer_number = dictionary.get(c.CUSTOMER_KEY)
 
             document_path = os.path.join(directory_path, f'{document_number}.pdf')
-            if os.path.exists(document_path) and dictionary.get(INVOICE_TOTAL) != "0.00":
-                email_address = dictionary.get(EMAIL)
-                if isinstance(email_address, str):
-                    self.send_email_with_attachment(email_address, document_path, document_number, customer_number) 
-                elif isinstance(email_address, list):
-                    for email in email_address:
-                        self.send_email_with_attachment(email, document_path, document_number, customer_number)
+    
+            if os.path.exists(document_path):
+                if not dictionary.get(c.SEND_KEY):
+                    print(f'email NOT sent to {customer_number}')
+                else:
+                    email_address = dictionary.get(c.EMAIL_KEY)
+                    if isinstance(email_address, str):
+                        # print(f'email sent to {customer_number}: {email_address}')
+                        self.send_email_with_attachment(email_address, document_path, document_number, customer_number) 
+                    elif isinstance(email_address, list):
+                        for email in email_address:
+                            # print(f'email sent to {customer_number}: {email_address}')
+                            self.send_email_with_attachment(email, document_path, document_number, customer_number)
             else:
-                print(f"File {document_path} not found for document {dictionary[self.variable_config['pdf_invoice']]}. Email not sent.")
+                print(f"File {document_path} not found for document {document_number}. Email not sent.")
 
-    def copy_directory_with_timestamp(self, source_dir, dest_dir):
+    def copy_directory_with_timestamp(self, source_dir, dest_dir, doc_type):
         """
         Copies the contents of a directory to a new directory with a timestamp and returns the new directory name.
 
@@ -124,7 +109,7 @@ class DocumentProcessor:
         """
         now = datetime.datetime.now()
         timestamp = now.strftime('%Y-%m-%d')
-        new_dir = os.path.join(dest_dir, os.path.basename(source_dir) + '_' + timestamp)
+        new_dir = os.path.join(dest_dir, doc_type + '_' + timestamp)
         shutil.copytree(source_dir, new_dir)
         return new_dir
 
@@ -145,7 +130,7 @@ class DocumentProcessor:
             except Exception as e:
                 print(f"Failed to delete {file_path}. Reason: {e}")
 
-    def copy_and_clear_directory(self, source_dir, dest_dir):
+    def copy_and_clear_directory(self, source_dir, dest_dir, doc_type):
         """
         Copies the contents of a directory to a new directory with a timestamp, clears the original directory, and returns the
         name of the new directory.
@@ -154,6 +139,25 @@ class DocumentProcessor:
             source_dir (str): The path of the directory to be copied.
             dest_dir (str): The path of the directory where the copied directory with timestamp will be created.
         """
-        new_dir = self.copy_directory_with_timestamp(source_dir, dest_dir)
+        new_dir = self.copy_directory_with_timestamp(source_dir, dest_dir, doc_type)
         self.clear_directory(source_dir)
+        
         print(f'The input directory has been cleared and today\'s documents have been backed up into: {new_dir}')
+
+    def find_client(self):
+        """
+        Matches customer numbers from the document data to the client data and stores the final data in a list.
+        """
+
+        client_data_hash = {entry[self.config['excel_customer']]: entry for entry in self.client_data}
+        for entry in self.data_list:
+            ccustno = entry[c.CUSTOMER_KEY]
+            if ccustno in client_data_hash:
+                match = entry
+                match[c.EMAIL_KEY] = client_data_hash[ccustno][self.config['excel_email']]
+                total_str = match[c.TOTAL_KEY]
+                total_float = float(total_str.replace(",", ""))
+                match[c.SEND_KEY] = True if total_float > 0 else False
+                self.final_list.append(match)
+        
+        print(json.dumps(self.final_list, indent=4))

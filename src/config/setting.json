@@ -1,0 +1,14 @@
+{
+    "excel": "C:/Users/Jakobi Lee/Documents/Projects/Auto-Invoicer/database/emailfile.xlsx",
+    "input": "C:/Users/Jakobi Lee/Documents/Projects/Auto-Invoicer/pdf/statements",
+    "backup": "C:/Users/Jakobi Lee/Documents/Projects/Auto-Invoicer/backup",
+    "pdf_invoice": "Invoice #",
+    "pdf_invoice_customer": "Customer #",
+    "pdf_statement": "Stmt Date",
+    "pdf_statement_customer": "Customer No.",
+    "excel_email": "Email",
+    "excel_customer": "Customer #",
+    "send_email": false,
+    "backup_pdf": true,
+    "cc": "jeff@portamini.com"
+}

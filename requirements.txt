@@ -10,3 +10,4 @@ python-dateutil==2.8.2
 pytz==2022.7.1
 pywin32==305
 six==1.16.0
+ttkbootstrap==1.10.1
