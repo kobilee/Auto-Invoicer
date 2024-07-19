@@ -27,6 +27,19 @@ class DocumentProcessor:
         self.config = config
         self.doc_type = ""
 
+    def create_report(self):
+        report_dir = self.config["report"]
+        os.makedirs(report_dir, exist_ok=True)
+
+        df = pd.DataFrame(self.final_list)
+        report_path = os.path.join(report_dir, "statement_report.xlsx")
+        
+        try:
+            df.to_excel(report_path, sheet_name="Statements", index=False)
+            print(f"Report saved successfully at {report_path}")
+        except Exception as e:
+            print(f"Failed to save the report: {e}")
+
     def read_excel_to_dict(self):
         """
         Reads the excel file and stores the client data in a list of dictionaries.

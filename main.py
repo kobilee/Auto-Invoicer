@@ -24,8 +24,10 @@ def process_documents(processor, config, args):
 
     if found_pdf:
         processor.find_client()
+        if args.document_type == "statement":
+            processor.create_report()
 
-        pause = input("Please review the documents/emails in the terminal. Press 'Y' to continue or any other key to exit: ")
+        pause = input("Please review the documents/emails in the terminal and the Report. Press 'Y' to continue or any other key to exit: ")
         if pause.upper() == "Y":
             if config['send_email']:
                 processor.check_and_send_documents(processor.final_list, temp_dir)

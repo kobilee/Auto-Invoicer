@@ -3,7 +3,7 @@
     "database_filename": "emailfile.xlsx",
     "input_statements": "pdf/statements",
     "input_invoices": "pdf/invoices",
-    "backup": "C:/Users/Jakobi Lee/Documents/Projects/backup",
+    "report": "C:/Users/Jakobi Lee/Documents/Projects/report",
     "pdf_invoice": "Invoice #",
     "pdf_invoice_customer": "Customer #",
     "pdf_statement": "Stmt Date",

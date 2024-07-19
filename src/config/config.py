@@ -17,8 +17,8 @@ def load_settings(json_path, document_type=None):
     
     config['excel'] = os.path.join(base_dir, config['database_dir'], config['database_filename'])
 
-    if not os.path.exists(config['backup']):
-        os.makedirs(config['backup'])
+    if not os.path.exists(config['report']):
+        os.makedirs(config['report'])
 
     return config
 

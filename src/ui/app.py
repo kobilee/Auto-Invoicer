@@ -18,7 +18,7 @@ class DocumentProcessorApp(ttk.Window):
         self.config_path = "src/config/setting.json"
         self.config = load_settings(self.config_path)
         self.title("Document Processor")
-        self.geometry("400x300")
+        self.geometry("500x400")
         self.create_widgets()
 
     def create_widgets(self):
@@ -136,16 +136,19 @@ class DocumentProcessorApp(ttk.Window):
         self.upload_button.pack(pady=20)
 
     def show_results(self):
-        result_window = self.create_window("Review Results", "700x600")
+        result_window = self.create_window("Review Results", "800x800")
         scrollable_frame = self.create_scrollable_frame(result_window)
 
         self.create_result_headings(scrollable_frame, self.config["send_email"])
         self.populate_results(scrollable_frame, self.config["send_email"])
+        if self.doc_type.get() == "statement":
+            self.processor.create_report()
+            messagebox.showinfo("Report", f'Report generated at {self.config["report"]}')
 
         self.create_action_buttons(result_window, self.proceed)
 
     def show_unmatched_entries(self):
-        unmatched_window = self.create_window("Update Unmatched Entries", "500x600")
+        unmatched_window = self.create_window("Update Unmatched Entries", "800x800")
         scrollable_frame = self.create_scrollable_frame(unmatched_window)
 
         self.create_unmatched_headings(scrollable_frame)
@@ -198,16 +201,16 @@ class DocumentProcessorApp(ttk.Window):
             ttk.Label(scrollable_frame, text=item['email'], **cell_style).grid(row=idx, column=1, padx=5, pady=5)
             ttk.Label(scrollable_frame, text=item.get('statement_date', item.get('invoice_num', '')), **cell_style).grid(row=idx, column=2, padx=5, pady=5)
             ttk.Label(scrollable_frame, text=item['total'], **cell_style).grid(row=idx, column=3, padx=5, pady=5)
-
+            
             if send_email:
-                var = tk.BooleanVar(value=item['send'])
-                cb = ttk.Checkbutton(scrollable_frame, variable=var, bootstyle="danger-square-toggle")
+                var = tk.BooleanVar(self, item['send'])
+                cb = ttk.Checkbutton(scrollable_frame, variable=var, bootstyle="round-toggle")
                 cb.grid(row=idx, column=4, padx=5, pady=5)
                 self.checkboxes.append((item, var))
             else:
-                var = tk.BooleanVar(False)
+                var = tk.BooleanVar(self, False)
                 self.checkboxes.append((item, var))
-
+                
     def create_unmatched_headings(self, scrollable_frame):
         headings = ["Customer Number", "Date", "Total", "Email"]
         if self.config["send_email"]:
@@ -220,14 +223,15 @@ class DocumentProcessorApp(ttk.Window):
         self.unmatched_vars = []
         cell_style = {"foreground": "black"}
         for idx, item in enumerate(self.processor.unmatched, start=1):
-            email_var = tk.StringVar(value=item[c.EMAIL_KEY])
-            send_var = tk.BooleanVar(value=item[c.SEND_KEY])
+            email_var = tk.StringVar(self, value=item[c.EMAIL_KEY])
+            send_var = tk.BooleanVar(self, value=item[c.SEND_KEY])
             ttk.Label(scrollable_frame, text=item['customer_num'], **cell_style).grid(row=idx, column=0, padx=5, pady=5)
             ttk.Label(scrollable_frame, text=item.get('statement_date', item.get('invoice_num', '')), **cell_style).grid(row=idx, column=1, padx=5, pady=5)
             ttk.Label(scrollable_frame, text=item['total'], **cell_style).grid(row=idx, column=2, padx=5, pady=5)
-            ttk.Entry(scrollable_frame, textvariable=email_var, bootstyle="danger").grid(row=idx, column=3, sticky='ew', padx=5, pady=5)
+            ttk.Entry(scrollable_frame, textvariable=email_var).grid(row=idx, column=3, sticky='ew', padx=5, pady=5)
+            
             if self.config["send_email"]:
-                ttk.Checkbutton(scrollable_frame, variable=send_var, bootstyle="danger-square-toggle").grid(row=idx, column=4, sticky='w', padx=35, pady=5)
+                ttk.Checkbutton(scrollable_frame, variable=send_var, bootstyle="round-toggle").grid(row=idx, column=4, sticky='w', padx=35, pady=5)
             self.unmatched_vars.append((item, email_var, send_var))
 
     def create_action_buttons(self, window, command):
@@ -315,7 +319,7 @@ class DocumentProcessorApp(ttk.Window):
     def open_settings(self):
         settings_window = ttk.Toplevel(self)
         settings_window.title("Settings")
-        settings_window.geometry("550x400")
+        settings_window.geometry("800x600")
 
         container = ttk.Frame(settings_window)
         container.pack(fill=tk.BOTH, expand=True)
