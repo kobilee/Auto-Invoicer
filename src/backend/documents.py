@@ -25,6 +25,7 @@ class DocumentProcessor:
         self.final_list = []
         self.unmatched = []
         self.config = config
+        self.doc_type = ""
 
     def read_excel_to_dict(self):
         """
@@ -51,8 +52,8 @@ class DocumentProcessor:
             mail.To = email_address
             if self.config['cc']:
                 mail.CC = self.config['cc']
-            mail.Subject = f'PortaMini Document {document_num} {client_num}'
-            mail.Body = '''Please see attached document.\n
+            mail.Subject = f'PortaMini {self.doc_type} {document_num if self.doc_type == "invoice" else ""} {client_num}'
+            mail.Body = f'''Please see attached {self.doc_type}.\n
                             \n
                             Regards,\n
                             \n
@@ -88,11 +89,10 @@ class DocumentProcessor:
                 else:
                     email_address = dictionary.get(c.EMAIL_KEY)
                     if isinstance(email_address, str):
-                        # print(f'email sent to {customer_number}: {email_address}')
                         self.send_email_with_attachment(email_address, document_path, document_number, customer_number) 
                     elif isinstance(email_address, list):
                         for email in email_address:
-                            # print(f'email sent to {customer_number}: {email_address}')
+
                             self.send_email_with_attachment(email, document_path, document_number, customer_number)
             else:
                 print(f"File {document_path} not found for document {document_number}. Email not sent.")
