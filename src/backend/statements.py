@@ -9,6 +9,10 @@ import src.backend.constants as c
 
 
 class StatementProcessor(DocumentProcessor):
+    def __init__(self, config):
+        super().__init__(config)
+        self.doc_type = "statement"
+        
     def pdf(self, file, temp_dir):
         """
         Processes a PDF file to extract statement and customer data,

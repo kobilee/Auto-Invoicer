@@ -10,6 +10,10 @@ INVOICE_TOTAL = "Invoice Total"
 EMAIL = "email"
 
 class InvoiceProcessor(DocumentProcessor):
+    def __init__(self, config):
+        super().__init__(config)
+        self.doc_type = "invoice"
+        
     def pdf(self, file, temp_dir):
         """
         Processes a PDF file to extract invoice and customer data,
