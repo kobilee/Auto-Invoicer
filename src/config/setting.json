@@ -12,5 +12,6 @@
     "excel_customer": "Customer #",
     "send_email": false,
     "clear_inputs": false,
-    "cc": "jeff@portamini.com"
+    "cc": "jeff@portamini.com",
+    "excel": "C:\\Users\\Jakobi Lee\\Documents\\Projects\\Auto-Invoicer\\database\\emailfile.xlsx"
 }

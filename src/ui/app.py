@@ -12,47 +12,56 @@ from src.backend.statements import StatementProcessor
 from src.config.config import load_settings, save_settings
 import src.backend.constants as c
 
-
-
-
 class DocumentProcessorApp(ttk.Window):
     def __init__(self):
-        super().__init__(themename="superhero")  # You can change the theme here
+        super().__init__(themename="litera")  # You can change the theme here
         self.config_path = "src/config/setting.json"
         self.config = load_settings(self.config_path)
-
         self.title("Document Processor")
-        self.geometry("400x400")
+        self.geometry("400x300")
         self.create_widgets()
-        
+
     def create_widgets(self):
         self.doc_type = ttk.StringVar(value="statement")
-
-        self.radio_statement = ttk.Radiobutton(self, text="Statements", variable=self.doc_type, value="statement", bootstyle="success")
-        self.radio_statement.pack(pady=10)
-
-        self.last_invoice_run_text = tk.StringVar()
-        self.update_invoice_text()
-        self.radio_invoice = ttk.Radiobutton(self, text=self.last_invoice_run_text.get(), variable=self.doc_type, value="invoice", bootstyle="info")
-        self.radio_invoice.pack(pady=10)
         
-        self.settings_button = ttk.Button(self, text="Settings", command=self.open_settings, bootstyle="warning")
-        self.settings_button.pack(pady=20)
-
-        self.upload_button = ttk.Button(self, text="Upload PDF", command=self.upload_file, bootstyle="primary")
-        self.upload_button.pack(pady=20)
-
-        self.process_button = ttk.Button(self, text="Process Documents", command=self.process_documents, bootstyle="success")
-        self.process_button.pack(pady=20)
-        self.process_button.pack_forget() 
-
-
-        self.status_label = ttk.Label(self, text="", wraplength=500)
-        self.status_label.pack(pady=20)
+        self.create_radiobuttons()
+        self.create_buttons()
+        self.create_status_label()
 
         self.temp_dir = None
         self.processor = None
         self.filenames = []
+
+    def create_radiobuttons(self):
+        # self.create_styles()
+        radio_frame = ttk.Frame(self)
+        radio_frame.pack(anchor="w", padx=20, pady=10)
+
+        self.radio_statement = ttk.Radiobutton(radio_frame, text="Statements", variable=self.doc_type, value="statement", bootstyle="danger")
+        self.radio_statement.pack(anchor="w", pady=10)
+
+        self.last_invoice_run_text = tk.StringVar()
+        self.update_invoice_text()
+        self.radio_invoice = ttk.Radiobutton(radio_frame, text=self.last_invoice_run_text.get(), variable=self.doc_type, value="invoice", bootstyle="danger")
+        self.radio_invoice.pack(anchor="w", pady=10)
+
+    def create_buttons(self):
+        button_frame = ttk.Frame(self)
+        button_frame.pack(pady=20)
+
+        self.settings_button = ttk.Button(button_frame, text="Settings", command=self.open_settings, bootstyle="danger")
+        self.settings_button.pack(side=tk.LEFT, padx=10)
+
+        self.upload_button = ttk.Button(button_frame, text="Upload PDF", command=self.upload_file, bootstyle="light")
+        self.upload_button.pack(side=tk.LEFT, padx=10)
+
+        self.process_button = ttk.Button(button_frame, text="Process Documents", command=self.process_documents, bootstyle="dark")
+        self.process_button.pack(side=tk.LEFT, padx=10)
+        self.process_button.pack_forget()
+
+    def create_status_label(self):
+        self.status_label = ttk.Label(self, text="", wraplength=500)
+        self.status_label.pack(pady=20)
 
     def update_invoice_text(self):
         last_invoice_run = self.get_last_invoice_run()
@@ -68,7 +77,7 @@ class DocumentProcessorApp(ttk.Window):
         except FileNotFoundError:
             return "No previous runs logged."
         return "No previous runs logged."
-        
+
     def upload_file(self):
         filetypes = (("PDF files", "*.pdf"), ("All files", "*.*"))
         filenames = filedialog.askopenfilenames(title="Select files", filetypes=filetypes)
@@ -80,15 +89,15 @@ class DocumentProcessorApp(ttk.Window):
             self.config['input'] = os.path.dirname(filenames[0])
 
             self.upload_button.pack_forget()
-            self.process_button.pack(pady=20)
+            self.process_button.pack(padx=10)
         else:
             self.status_label.config(text="No file selected.")
-        
+
     def process_documents(self):
         if not self.filenames:
             messagebox.showwarning("Warning", "No files uploaded.")
             return
-        
+
         self.temp_dir = tempfile.mkdtemp()
 
         if self.doc_type.get() == "statement":
@@ -97,39 +106,67 @@ class DocumentProcessorApp(ttk.Window):
             self.processor = InvoiceProcessor(self.config)
 
         self.processor.read_excel_to_dict()
-        found_pdf = False
-        for filename in self.filenames:
-            if filename.endswith(".pdf"):
-                file_path = filename
-                self.processor.pdf(file_path, self.temp_dir)
-                found_pdf = True
-        
+        found_pdf = self.process_pdfs()
+
         if found_pdf:
             self.processor.find_client()
-            
             if self.processor.unmatched:
                 self.show_unmatched_entries()
             else:
                 self.show_results()
-            self.process_button.pack_forget()
-            self.upload_button.pack(pady=20)
+            self.switch_to_upload()
         else:
-            self.status_label.self.config(text="No PDFs found.")
-            self.process_button.pack_forget()
-            self.upload_button.pack(pady=20)
-    
+            self.status_label.config(text="No PDFs found.")
+            self.switch_to_upload()
+
+    def process_pdfs(self):
+        found_pdf = False
+        for filename in self.filenames:
+            if filename.endswith(".pdf"):
+                file_path = filename
+                success = self.processor.pdf(file_path, self.temp_dir)
+                if success == "Error":
+                    messagebox.showerror("Error", f"Invalid doc type uploaded or expect string not found, check the console for details")
+                    return False
+                found_pdf = True
+        return found_pdf
+
+    def switch_to_upload(self):
+        self.process_button.pack_forget()
+        self.upload_button.pack(pady=20)
+
     def show_results(self):
-        result_window = ttk.Toplevel(self)
-        result_window.title("Review Results")
-        result_window.geometry("650x600")
+        result_window = self.create_window("Review Results", "700x600")
+        scrollable_frame = self.create_scrollable_frame(result_window)
 
-        frame = ttk.Frame(result_window)
+        self.create_result_headings(scrollable_frame, self.config["send_email"])
+        self.populate_results(scrollable_frame, self.config["send_email"])
+
+        self.create_action_buttons(result_window, self.proceed)
+
+    def show_unmatched_entries(self):
+        unmatched_window = self.create_window("Update Unmatched Entries", "500x600")
+        scrollable_frame = self.create_scrollable_frame(unmatched_window)
+
+        self.create_unmatched_headings(scrollable_frame)
+        self.populate_unmatched(scrollable_frame)
+
+        self.create_action_buttons(unmatched_window, self.update_unmatched_entries)
+
+    def create_window(self, title, dimensions):
+        window = ttk.Toplevel(self)
+        window.title(title)
+        window.geometry(dimensions)
+        return window
+
+    def create_scrollable_frame(self, window):
+        frame = ttk.Frame(window)
         frame.pack(expand=True, fill=tk.BOTH)
-
+        
         canvas = tk.Canvas(frame)
         canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        scrollbar = ttk.Scrollbar(frame, orient="vertical", command=canvas.yview)
+        scrollbar = ttk.Scrollbar(frame, orient="vertical", command=canvas.yview, )
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
         scrollable_frame = ttk.Frame(canvas)
@@ -143,92 +180,70 @@ class DocumentProcessorApp(ttk.Window):
         canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
 
-        # Define column headings with bold style
-        headings = ["Customer Number", "Email", "Date", "Total", "Send"]
-        header_style = {"foreground": "white", "font": ("TkDefaultFont", 10, "bold")}
-        cell_style = {"foreground": "white"}
+        return scrollable_frame
 
+    def create_result_headings(self, scrollable_frame, send_email):
+        headings = ["Customer Number", "Email", "Date", "Total"]
+        if send_email:
+            headings.append("Send")
+        header_style = {"foreground": "black", "font": ("TkDefaultFont", 10, "bold")}
         for col_idx, heading in enumerate(headings):
             ttk.Label(scrollable_frame, text=heading, **header_style).grid(row=0, column=col_idx, padx=5, pady=5)
 
+    def populate_results(self, scrollable_frame, send_email):
         self.checkboxes = []
+        cell_style = {"foreground": "black"}
         for idx, item in enumerate(self.processor.final_list, start=1):
             ttk.Label(scrollable_frame, text=item['customer_num'], **cell_style).grid(row=idx, column=0, padx=5, pady=5)
             ttk.Label(scrollable_frame, text=item['email'], **cell_style).grid(row=idx, column=1, padx=5, pady=5)
             ttk.Label(scrollable_frame, text=item.get('statement_date', item.get('invoice_num', '')), **cell_style).grid(row=idx, column=2, padx=5, pady=5)
             ttk.Label(scrollable_frame, text=item['total'], **cell_style).grid(row=idx, column=3, padx=5, pady=5)
 
-            var = tk.BooleanVar(value=item['send'])
-            cb = ttk.Checkbutton(scrollable_frame, variable=var, bootstyle="round-toggle")
-            cb.grid(row=idx, column=4, padx=5, pady=5)
-            self.checkboxes.append((item, var))
+            if send_email:
+                var = tk.BooleanVar(value=item['send'])
+                cb = ttk.Checkbutton(scrollable_frame, variable=var, bootstyle="danger-square-toggle")
+                cb.grid(row=idx, column=4, padx=5, pady=5)
+                self.checkboxes.append((item, var))
+            else:
+                var = tk.BooleanVar(False)
+                self.checkboxes.append((item, var))
 
-        action_frame = ttk.Frame(result_window)
-        action_frame.pack(fill=tk.X, pady=10)
-
-        continue_button = ttk.Button(action_frame, text="Continue", command=lambda: self.proceed(result_window), bootstyle="success")
-        continue_button.pack(side=tk.LEFT, padx=20)
-
-        exit_button = ttk.Button(action_frame, text="Exit", command=lambda: self.exit(result_window), bootstyle="danger")
-        exit_button.pack(side=tk.RIGHT, padx=20)
-
-    def show_unmatched_entries(self):
-        unmatched_window = ttk.Toplevel(self)
-        unmatched_window.title("Update Unmatched Entries")
-        unmatched_window.geometry("500x600")
-
-        frame = ttk.Frame(unmatched_window)
-        frame.pack(expand=True, fill=tk.BOTH)
-
-        canvas = tk.Canvas(frame)
-        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-        scrollbar = ttk.Scrollbar(frame, orient="vertical", command=canvas.yview)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-        scrollable_frame = ttk.Frame(canvas)
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(
-                scrollregion=canvas.bbox("all")
-            )
-        )
-
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
-
-        # Define column headings with bold style
-        headings = ["Customer Number", "Date", "Total", "Email", "Send"]
-        header_style = {"foreground": "white", "font": ("TkDefaultFont", 10, "bold")}
-        cell_style = {"foreground": "white"}
-
+    def create_unmatched_headings(self, scrollable_frame):
+        headings = ["Customer Number", "Date", "Total", "Email"]
+        if self.config["send_email"]:
+            headings.append("Send")
+        header_style = {"foreground": "black", "font": ("TkDefaultFont", 10, "bold")}
         for col_idx, heading in enumerate(headings):
             ttk.Label(scrollable_frame, text=heading, **header_style).grid(row=0, column=col_idx, padx=5, pady=5)
 
+    def populate_unmatched(self, scrollable_frame):
         self.unmatched_vars = []
+        cell_style = {"foreground": "black"}
         for idx, item in enumerate(self.processor.unmatched, start=1):
             email_var = tk.StringVar(value=item[c.EMAIL_KEY])
             send_var = tk.BooleanVar(value=item[c.SEND_KEY])
             ttk.Label(scrollable_frame, text=item['customer_num'], **cell_style).grid(row=idx, column=0, padx=5, pady=5)
             ttk.Label(scrollable_frame, text=item.get('statement_date', item.get('invoice_num', '')), **cell_style).grid(row=idx, column=1, padx=5, pady=5)
             ttk.Label(scrollable_frame, text=item['total'], **cell_style).grid(row=idx, column=2, padx=5, pady=5)
-            ttk.Entry(scrollable_frame, textvariable=email_var).grid(row=idx, column=3, sticky='ew', padx=5, pady=5)
-            ttk.Checkbutton(scrollable_frame, variable=send_var, bootstyle="round-toggle").grid(row=idx, column=4, sticky='w', padx=5, pady=5)
+            ttk.Entry(scrollable_frame, textvariable=email_var, bootstyle="danger").grid(row=idx, column=3, sticky='ew', padx=5, pady=5)
+            if self.config["send_email"]:
+                ttk.Checkbutton(scrollable_frame, variable=send_var, bootstyle="danger-square-toggle").grid(row=idx, column=4, sticky='w', padx=35, pady=5)
             self.unmatched_vars.append((item, email_var, send_var))
 
-        action_frame = ttk.Frame(unmatched_window)
+    def create_action_buttons(self, window, command):
+        action_frame = ttk.Frame(window)
         action_frame.pack(fill=tk.X, pady=10)
 
-        update_button = ttk.Button(action_frame, text="Update and Save", command=lambda: self.update_unmatched_entries(unmatched_window), bootstyle="success")
-        update_button.pack(side=tk.LEFT, padx=20)
+        action_button = ttk.Button(action_frame, text="Continue", command=lambda: command(window), bootstyle="success")
+        action_button.pack(side=tk.LEFT, padx=20)
 
-        exit_button = ttk.Button(action_frame, text="Exit", command=unmatched_window.destroy, bootstyle="danger")
+        exit_button = ttk.Button(action_frame, text="Exit", command=window.destroy, bootstyle="danger")
         exit_button.pack(side=tk.RIGHT, padx=20)
 
     def update_unmatched_entries(self, window):
         for item, email_var, send_var in self.unmatched_vars:
             new_email = email_var.get()
-            if new_email != item[c.EMAIL_KEY]:  # Only update if the email field was changed
+            if new_email != item[c.EMAIL_KEY]:
                 item[c.EMAIL_KEY] = new_email
                 self.update_email_file(item)
                 self.processor.final_list.append(item)                
@@ -238,9 +253,6 @@ class DocumentProcessorApp(ttk.Window):
         self.show_results()
 
     def update_email_file(self, item):
-        """
-        Updates the emailfile.xlsx with the new customer code-email address pair if the email field was updated.
-        """
         try:
             df = pd.read_excel(self.config['excel'])
         except Exception as e:
@@ -250,7 +262,6 @@ class DocumentProcessorApp(ttk.Window):
         customer_code = item['customer_num']
         email = item[c.EMAIL_KEY]
 
-        # Check if the email field was updated
         if not any((df[self.config['excel_customer']] == customer_code) & (df[self.config['excel_email']] == email)):
             if customer_code not in df[self.config['excel_customer']].values:
                 new_row = pd.DataFrame({self.config['excel_customer']: [customer_code], self.config['excel_email']: [email]})
@@ -264,25 +275,24 @@ class DocumentProcessorApp(ttk.Window):
                 messagebox.showerror("Error", f"Failed to update Excel file: {e}")
 
     def clear_input_file(self, input_dir):
-            root = tk.Tk()
-            root.withdraw()  # Hide the main Tkinter window
+        root = tk.Tk()
+        root.withdraw()
 
-            clear = messagebox.askyesno("Confirm Deletion", "Would you like to permanently delete the input document?")
-            root.destroy()  # Destroy the Tkinter root window
+        clear = messagebox.askyesno("Confirm Deletion", "Would you like to permanently delete the input document?")
+        root.destroy()
 
-            if clear:
-                self.processor.clear_directory(input_dir)
+        if clear:
+            self.processor.clear_directory(input_dir)
 
     def proceed(self, window):
-        for item, var in self.checkboxes:
-            item['send'] = var.get()
+        if self.checkboxes:
+            for item, var in self.checkboxes:
+                item['send'] = var.get()
 
         if self.temp_dir:
             if self.config['send_email']:
                 self.processor.check_and_send_documents(self.processor.final_list, self.temp_dir)
-                messagebox.showinfo("Emails Sent", f'All emails flag to send have been sent')
-            else:
-                messagebox.showinfo("Emails Not Sent", 'send_email was set to False, emails were not sent')
+                messagebox.showinfo("Emails Sent", 'All emails flagged to send have been sent')
 
             if self.doc_type.get() == "invoice":
                 self.processor.log_invoice_run(self.config['input'], self.temp_dir)
@@ -292,7 +302,7 @@ class DocumentProcessorApp(ttk.Window):
             
             if self.config['clear_inputs']:
                 self.processor.clear_directory(self.config['input'])
-                messagebox.showinfo("Input Cleared", f'The input directory has been cleared')
+                messagebox.showinfo("Input Cleared", 'The input directory has been cleared')
         window.destroy()
         self.status_label.config(text="Processing completed.")
 
@@ -305,13 +315,14 @@ class DocumentProcessorApp(ttk.Window):
     def open_settings(self):
         settings_window = ttk.Toplevel(self)
         settings_window.title("Settings")
-        settings_window.geometry("600x600")
+        settings_window.geometry("550x400")
 
         container = ttk.Frame(settings_window)
         container.pack(fill=tk.BOTH, expand=True)
 
-        canvas = tk.Canvas(container)
-        scrollbar = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
+        canvas = tk.Canvas(container, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(container, orient="vertical", command=canvas.yview, bootstyle="default")
+        
         scrollable_frame = ttk.Frame(canvas)
 
         scrollable_frame.bind(
@@ -331,21 +342,21 @@ class DocumentProcessorApp(ttk.Window):
         row = 0
         for key, value in self.config.items():
             if key not in ["input_statements", "input_invoices", "database_dir", "database_filename"]:
-                ttk.Label(scrollable_frame, text=key).grid(row=row, column=0, sticky='w', pady=5)
+                ttk.Label(scrollable_frame, text=key, foreground="black").grid(row=row, column=0, sticky='w', pady=5, padx=10)
                 var = ttk.StringVar(value=str(value))
-                entry = ttk.Entry(scrollable_frame, textvariable=var)
-                entry.grid(row=row, column=1, sticky='ew', pady=5)
-                entry.config(width=60)
+                entry = ttk.Entry(scrollable_frame, textvariable=var, bootstyle="dark")
+                entry.grid(row=row, column=1, sticky='ew', pady=5, padx= 40)
+                entry.config(width=50)
                 self.settings_vars[key] = var
                 row += 1
 
-        save_button = ttk.Button(settings_window, text="Save", command=self.save_settings, bootstyle="primary")
+        save_button = ttk.Button(settings_window, text="Save", command=self.save_settings, bootstyle="danger")
         save_button.pack(pady=10)
+
 
     def save_settings(self):
         for key, var in self.settings_vars.items():
             value = var.get()
-            # Convert to the appropriate type (bool, int, or float) if needed
             if value.lower() == 'true':
                 self.config[key] = True
             elif value.lower() == 'false':
@@ -359,4 +370,8 @@ class DocumentProcessorApp(ttk.Window):
                     except ValueError:
                         self.config[key] = value
         save_settings(self.config, self.config_path)
-        messagebox.showinfo("Settings Saved", "self.configuration has been saved successfully.")
+        messagebox.showinfo("Settings Saved", "Configuration has been saved successfully.")
+
+if __name__ == "__main__":
+    app = DocumentProcessorApp()
+    app.mainloop()
