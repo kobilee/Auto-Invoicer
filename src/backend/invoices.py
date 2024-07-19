@@ -42,6 +42,7 @@ class InvoiceProcessor(DocumentProcessor):
                     invoices[invoice_num] = []
                 invoices[invoice_num].append(page_num)
                 self.data_list.append(invoice_data)
+            
         return invoices
 
     def extract_data_from_page(self, page, page_num):

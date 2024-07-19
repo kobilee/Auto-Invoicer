@@ -23,6 +23,7 @@ class DocumentProcessor:
         self.data_list = []
         self.client_data = []
         self.final_list = []
+        self.unmatched = []
         self.config = config
 
     def read_excel_to_dict(self):
@@ -110,7 +111,8 @@ class DocumentProcessor:
         now = datetime.datetime.now()
         timestamp = now.strftime('%Y-%m-%d')
         new_dir = os.path.join(dest_dir, doc_type + '_' + timestamp)
-        shutil.copytree(source_dir, new_dir)
+        if not os.path.isdir(new_dir):
+            shutil.copytree(source_dir, new_dir)
         return new_dir
 
     def clear_directory(self, directory):
@@ -130,7 +132,7 @@ class DocumentProcessor:
             except Exception as e:
                 print(f"Failed to delete {file_path}. Reason: {e}")
 
-    def copy_and_clear_directory(self, source_dir, dest_dir, doc_type):
+    def log_invoice_run(self, input_path, temp_dir):
         """
         Copies the contents of a directory to a new directory with a timestamp, clears the original directory, and returns the
         name of the new directory.
@@ -139,11 +141,21 @@ class DocumentProcessor:
             source_dir (str): The path of the directory to be copied.
             dest_dir (str): The path of the directory where the copied directory with timestamp will be created.
         """
-        new_dir = self.copy_directory_with_timestamp(source_dir, dest_dir, doc_type)
-        self.clear_directory(source_dir)
-        
-        print(f'The input directory has been cleared and today\'s documents have been backed up into: {new_dir}')
-
+        log_file = "logs/invoice_runs.log"
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_entry = (
+            f"{timestamp} - "
+            f"send_email: {self.config['send_email']} - "
+            f"clear_inputs: {self.config['clear_inputs']} - "
+            f"cc: {self.config['cc']} - "
+            f"{', '.join(os.listdir(input_path))}\n"
+        )
+        with open(log_file, "a") as file:
+            file.write(log_entry)
+            
+        self.clear_directory(temp_dir)
+        print(f'The Temp directory has been cleared')
+    
     def find_client(self):
         """
         Matches customer numbers from the document data to the client data and stores the final data in a list.
@@ -159,5 +171,16 @@ class DocumentProcessor:
                 total_float = float(total_str.replace(",", ""))
                 match[c.SEND_KEY] = True if total_float > 0 else False
                 self.final_list.append(match)
+            else:
+                unmatched = match = entry
+                match[c.EMAIL_KEY] = ""
+                match[c.SEND_KEY] = False
+                self.unmatched.append(unmatched)
         
-        print(json.dumps(self.final_list, indent=4))
+        print("The following documents will be sent:")
+        for item in self.final_list:
+            print(json.dumps(item, indent=4))
+
+        print("\nThe following documents will not be sent due to Customer codes not have an email in the emailfile:")
+        for item in self.unmatched:
+            print(json.dumps(item, indent=4))

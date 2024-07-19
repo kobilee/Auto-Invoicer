@@ -4,13 +4,7 @@ import json
 import tempfile
 from src.backend.invoices import InvoiceProcessor
 from src.backend.statements import StatementProcessor
-
-def load_settings(json_path):
-    if not os.path.isfile(json_path):
-        raise FileNotFoundError(f"The configuration file '{json_path}' was not found.")
-    
-    with open(json_path, 'r') as file:
-        return json.load(file)
+from src.config.config import load_settings
 
 def process_documents(processor, config, args):
     processor.read_excel_to_dict()
@@ -31,23 +25,29 @@ def process_documents(processor, config, args):
     if found_pdf:
         processor.find_client()
 
+
         pause = input("Please review the documents/emails in the terminal. Press 'Y' to continue or any other key to exit: ")
         if pause.upper() == "Y":
             if config['send_email']:
                 processor.check_and_send_documents(processor.final_list, temp_dir)
-            if config['backup_pdf']:
-                processor.copy_and_clear_directory(temp_dir, backup_folder, args.document_type)
+            if args.document_type == "invoice":
+                processor.log_invoice_run(input_folder, temp_dir)
+            else:
+                processor.clear_directory(temp_dir)
+            if config['clear_inputs']:
+                processor.clear_directory(input_folder)
     else:
         print(f"No PDFs found in the input directory: {config['input']} ")
     print("Complete")
 
 def main():
+
     parser = argparse.ArgumentParser(description='Process invoices or statements.')
     parser.add_argument('document_type', choices=['invoice', 'statement'], help='Type of document to process')
     parser.add_argument('--config', default='src/config/setting.json', help='Path to the configuration JSON file')
     args = parser.parse_args()
 
-    config = load_settings(args.config)
+    config = load_settings(args.config, args.document_type)
 
     if args.document_type == 'invoice':
         processor = InvoiceProcessor(config)

@@ -1,4 +1,4 @@
 pdf/
 .venv
 *.pyc
-backup/
+logs/
