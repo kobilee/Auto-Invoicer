@@ -25,7 +25,6 @@ def process_documents(processor, config, args):
     if found_pdf:
         processor.find_client()
 
-
         pause = input("Please review the documents/emails in the terminal. Press 'Y' to continue or any other key to exit: ")
         if pause.upper() == "Y":
             if config['send_email']:

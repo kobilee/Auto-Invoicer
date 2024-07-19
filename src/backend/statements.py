@@ -19,8 +19,9 @@ class StatementProcessor(DocumentProcessor):
         """
         with fitz.open(file) as pdf_file:
             statements = self.extract_statements(pdf_file)
+            if statements == "Error":
+                return"Error"
             self.save_statements_as_pdfs(statements, pdf_file, temp_dir)
-            print(temp_dir)
             return temp_dir
 
     def extract_statements(self, pdf_file):
@@ -34,14 +35,25 @@ class StatementProcessor(DocumentProcessor):
             dict: A dictionary where the keys are statement numbers and the values are lists of page numbers.
         """
         statements = {}
+        
         for page_num, page in enumerate(pdf_file):
             statement_data = self.extract_data_from_page(page, page_num)
-            if statement_data:
-                statement_file = statement_data[c.FILE_KEY]
-                if statement_file not in statements:
-                    statements[statement_file] = []
-                statements[statement_file].append(page_num)
-                self.data_list.append(statement_data)
+            
+            if not statement_data:
+                return "Error"
+            
+            if statement_data == "valid":
+                continue
+                
+            
+            statement_file = statement_data[c.FILE_KEY]
+            
+            if statement_file not in statements:
+                statements[statement_file] = []
+            
+            statements[statement_file].append(page_num)
+            self.data_list.append(statement_data)
+        
         return statements
 
     def extract_data_from_page(self, page, page_num):
@@ -102,7 +114,7 @@ class StatementProcessor(DocumentProcessor):
                 c.TOTAL_KEY: statement_total
             }
             return data
-        return
+        return "valid"
         
 
     def save_statements_as_pdfs(self, statements, pdf_file, temp_dir):

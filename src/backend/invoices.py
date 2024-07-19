@@ -20,6 +20,8 @@ class InvoiceProcessor(DocumentProcessor):
         """
         with fitz.open(file) as pdf_file:
             invoices = self.extract_invoices(pdf_file)
+            if invoices == "Error":
+                return"Error"
             self.save_invoices_as_pdfs(invoices, pdf_file, temp_dir)
             return temp_dir
 
@@ -34,15 +36,21 @@ class InvoiceProcessor(DocumentProcessor):
             dict: A dictionary where the keys are invoice numbers and the values are lists of page numbers.
         """
         invoices = {}
+        
         for page_num, page in enumerate(pdf_file):
             invoice_data = self.extract_data_from_page(page, page_num)
-            if invoice_data:
-                invoice_num = invoice_data[c.FILE_KEY]
-                if invoice_num not in invoices:
-                    invoices[invoice_num] = []
-                invoices[invoice_num].append(page_num)
-                self.data_list.append(invoice_data)
             
+            if not invoice_data:
+                return "Error"
+                
+            invoice_num = invoice_data[c.FILE_KEY]
+            
+            if invoice_num not in invoices:
+                invoices[invoice_num] = []
+            
+            invoices[invoice_num].append(page_num)
+            self.data_list.append(invoice_data)
+        
         return invoices
 
     def extract_data_from_page(self, page, page_num):
