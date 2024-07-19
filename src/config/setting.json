@@ -1,7 +1,9 @@
 {
-    "excel": "C:/Users/Jakobi Lee/Documents/Projects/Auto-Invoicer/database/emailfile.xlsx",
-    "input": "C:/Users/Jakobi Lee/Documents/Projects/Auto-Invoicer/pdf/statements",
-    "backup": "C:/Users/Jakobi Lee/Documents/Projects/Auto-Invoicer/backup",
+    "database_dir": "database",
+    "database_filename": "emailfile.xlsx",
+    "input_statements": "pdf/statements",
+    "input_invoices": "pdf/invoices",
+    "backup": "C:/Users/Jakobi Lee/Documents/Projects/backup",
     "pdf_invoice": "Invoice #",
     "pdf_invoice_customer": "Customer #",
     "pdf_statement": "Stmt Date",
