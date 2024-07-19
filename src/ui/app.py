@@ -20,7 +20,6 @@ class DocumentProcessorApp(ttk.Window):
         super().__init__(themename="superhero")  # You can change the theme here
         self.config_path = "src/config/setting.json"
         self.config = load_settings(self.config_path)
-        print(self.config['excel'])
 
         self.title("Document Processor")
         self.geometry("400x400")
@@ -32,8 +31,13 @@ class DocumentProcessorApp(ttk.Window):
         self.radio_statement = ttk.Radiobutton(self, text="Statements", variable=self.doc_type, value="statement", bootstyle="success")
         self.radio_statement.pack(pady=10)
 
-        self.radio_invoice = ttk.Radiobutton(self, text="Invoices", variable=self.doc_type, value="invoice", bootstyle="info")
+        self.last_invoice_run_text = tk.StringVar()
+        self.update_invoice_text()
+        self.radio_invoice = ttk.Radiobutton(self, text=self.last_invoice_run_text.get(), variable=self.doc_type, value="invoice", bootstyle="info")
         self.radio_invoice.pack(pady=10)
+        
+        self.settings_button = ttk.Button(self, text="Settings", command=self.open_settings, bootstyle="warning")
+        self.settings_button.pack(pady=20)
 
         self.upload_button = ttk.Button(self, text="Upload PDF", command=self.upload_file, bootstyle="primary")
         self.upload_button.pack(pady=20)
@@ -42,8 +46,6 @@ class DocumentProcessorApp(ttk.Window):
         self.process_button.pack(pady=20)
         self.process_button.pack_forget() 
 
-        self.settings_button = ttk.Button(self, text="Settings", command=self.open_settings, bootstyle="warning")
-        self.settings_button.pack(pady=20)
 
         self.status_label = ttk.Label(self, text="", wraplength=500)
         self.status_label.pack(pady=20)
@@ -51,6 +53,21 @@ class DocumentProcessorApp(ttk.Window):
         self.temp_dir = None
         self.processor = None
         self.filenames = []
+
+    def update_invoice_text(self):
+        last_invoice_run = self.get_last_invoice_run()
+        self.last_invoice_run_text.set(f"Invoices (Last run: {last_invoice_run})")
+
+    def get_last_invoice_run(self):
+        log_file = "logs/invoice_runs.log"
+        try:
+            with open(log_file, "r") as file:
+                lines = file.readlines()
+                if lines:
+                    return lines[-1].strip().split("-")[-1]
+        except FileNotFoundError:
+            return "No previous runs logged."
+        return "No previous runs logged."
         
     def upload_file(self):
         filetypes = (("PDF files", "*.pdf"), ("All files", "*.*"))
@@ -104,7 +121,7 @@ class DocumentProcessorApp(ttk.Window):
     def show_results(self):
         result_window = ttk.Toplevel(self)
         result_window.title("Review Results")
-        result_window.geometry("800x600")
+        result_window.geometry("650x600")
 
         frame = ttk.Frame(result_window)
         frame.pack(expand=True, fill=tk.BOTH)
@@ -267,10 +284,15 @@ class DocumentProcessorApp(ttk.Window):
             else:
                 messagebox.showinfo("Emails Not Sent", 'send_email was set to False, emails were not sent')
 
-            if self.config['backup_pdf']:
-                self.processor.copy_and_clear_directory(self.temp_dir, self.config['backup'], self.doc_type.get())
-                self.clear_input_file(self.config['input'])
-                messagebox.showinfo("Backup Complete", f'The input directory has been cleared and today\'s documents have been backed up into: {self.config["backup"]}')
+            if self.doc_type.get() == "invoice":
+                self.processor.log_invoice_run(self.config['input'], self.temp_dir)
+                self.update_invoice_text()
+            else:
+                self.processor.clear_directory(self.temp_dir)
+            
+            if self.config['clear_inputs']:
+                self.processor.clear_directory(self.config['input'])
+                messagebox.showinfo("Input Cleared", f'The input directory has been cleared')
         window.destroy()
         self.status_label.config(text="Processing completed.")
 

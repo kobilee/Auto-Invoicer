@@ -132,7 +132,7 @@ class DocumentProcessor:
             except Exception as e:
                 print(f"Failed to delete {file_path}. Reason: {e}")
 
-    def copy_and_clear_directory(self, temp_dir, dest_dir, doc_type):
+    def log_invoice_run(self, input_path, temp_dir):
         """
         Copies the contents of a directory to a new directory with a timestamp, clears the original directory, and returns the
         name of the new directory.
@@ -141,16 +141,21 @@ class DocumentProcessor:
             source_dir (str): The path of the directory to be copied.
             dest_dir (str): The path of the directory where the copied directory with timestamp will be created.
         """
-        new_dir = self.copy_directory_with_timestamp(temp_dir, dest_dir, doc_type)
-        
+        log_file = "logs/invoice_runs.log"
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_entry = (
+            f"{timestamp} - "
+            f"send_email: {self.config['send_email']} - "
+            f"clear_inputs: {self.config['clear_inputs']} - "
+            f"cc: {self.config['cc']} - "
+            f"{', '.join(os.listdir(input_path))}\n"
+        )
+        with open(log_file, "a") as file:
+            file.write(log_entry)
+            
         self.clear_directory(temp_dir)
-        print(f'The input directory has been cleared and today\'s documents have been backed up into: {new_dir}')
+        print(f'The Temp directory has been cleared')
     
-    def clear_input_file(self, input_dir):
-        clear = input("Would you like to permenetally delete the input document? (Y/N): ")
-        if clear.upper() == "Y":
-            self.clear_directory(input_dir)
-
     def find_client(self):
         """
         Matches customer numbers from the document data to the client data and stores the final data in a list.

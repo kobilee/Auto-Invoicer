@@ -25,13 +25,17 @@ def process_documents(processor, config, args):
     if found_pdf:
         processor.find_client()
 
+
         pause = input("Please review the documents/emails in the terminal. Press 'Y' to continue or any other key to exit: ")
         if pause.upper() == "Y":
             if config['send_email']:
                 processor.check_and_send_documents(processor.final_list, temp_dir)
-            if config['backup_pdf']:
-                processor.copy_and_clear_directory(temp_dir, backup_folder, args.document_type)
-                processor.clear_input_file(input_folder)
+            if args.document_type == "invoice":
+                processor.log_invoice_run(input_folder, temp_dir)
+            else:
+                processor.clear_directory(temp_dir)
+            if config['clear_inputs']:
+                processor.clear_directory(input_folder)
     else:
         print(f"No PDFs found in the input directory: {config['input']} ")
     print("Complete")

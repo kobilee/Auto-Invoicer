@@ -11,6 +11,6 @@
     "excel_email": "Email",
     "excel_customer": "Customer #",
     "send_email": false,
-    "backup_pdf": true,
+    "clear_inputs": false,
     "cc": "jeff@portamini.com"
 }
