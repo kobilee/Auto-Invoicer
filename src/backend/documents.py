@@ -67,6 +67,8 @@ class DocumentProcessor:
                 mail.CC = self.config['cc']
             mail.Subject = f'PortaMini {self.doc_type} {document_num if self.doc_type == "invoice" else ""} {client_num}'
             mail.Body = f'''Please see attached {self.doc_type}.\n
+
+                            Due to the postal strike, please send e-transfers to payments@portamini.com or contact us for other electronic transfer options. \n
                             \n
                             Regards,\n
                             \n
